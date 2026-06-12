@@ -1,0 +1,129 @@
+import java.util.*;
+
+public class Asignador {
+
+    private List<Camion> camiones;
+    private List<Paquete> paquetes;
+    private int estadosBack;
+    private int candidatosGreedy;
+
+    public Asignador(List<Camion> camiones, Collection<Paquete> paquetes) {
+        this.camiones = camiones;
+        this.paquetes = new ArrayList<>(paquetes);
+    }
+
+    public void resolver() {
+        System.out.println("=== Estrategia Backtracking ===");
+        estadosBack = 0;
+        Solucion mejorBT = backtracking(0, camiones);
+        mejorBT.imprimir();
+        System.out.println("Cantidad de estados generados: " + estadosBack);
+
+        // Resetear camiones para el greedy
+        resetearCamiones();
+
+        System.out.println("\n=== Estrategia Greedy ===");
+        candidatosGreedy = 0;
+        Solucion solGreedy = greedy();
+        solGreedy.imprimir();
+        System.out.println("Candidatos considerados: " + candidatosGreedy);
+    }
+
+    /*
+     * Estrategia Backtracking:
+     * Se recorren los paquetes uno por uno (índice). Para cada paquete se prueban
+     * todas las opciones: asignarlo a cada camión que lo acepte, o dejarlo sin asignar.
+     * Se guarda la solución con menor peso no asignado encontrada hasta el momento.
+     * Poda: si el peso no asignado acumulado ya supera al de la mejor solución conocida,
+     * se corta esa rama.
+     */
+    private Solucion backtracking(int indicePaquete, List<Camion> camiones) {
+        estadosBack++;
+
+        if (indicePaquete == paquetes.size()) {
+            // Construir solución con el estado actual de los camiones
+            Solucion sol = new Solucion(camiones);
+            for (Camion c : camiones) {
+                sol.getAsignaciones().put(c, new ArrayList<>(c.getPaquetesAsignados()));
+            }
+            return sol;
+        }
+
+        Paquete actual = paquetes.get(indicePaquete);
+        Solucion mejorLocal = null;
+
+        // Opción 1: intentar asignar a cada camión
+        for (Camion c : camiones) {
+            if (c.puedeAsignar(actual)) {
+                c.asignar(actual);
+                Solucion resultado = backtracking(indicePaquete + 1, camiones);
+                c.desasignar(actual);
+
+                if (mejorLocal == null || resultado.getPesoNoAsignado() < mejorLocal.getPesoNoAsignado()) {
+                    mejorLocal = resultado;
+                }
+
+                // Poda: si ya encontramos peso 0 no asignado, no hay mejor solución posible
+                if (mejorLocal.getPesoNoAsignado() == 0) return mejorLocal;
+            }
+        }
+
+        // Opción 2: dejar el paquete sin asignar
+        Solucion sinAsignar = backtracking(indicePaquete + 1, camiones);
+        sinAsignar.getNoAsignados().add(actual);
+
+        if (mejorLocal == null || sinAsignar.getPesoNoAsignado() < mejorLocal.getPesoNoAsignado()) {
+            mejorLocal = sinAsignar;
+        }
+
+        return mejorLocal;
+    }
+
+    /*
+     * Estrategia Greedy:
+     * Función de selección: ordenar paquetes de mayor a menor urgencia.
+     * La lógica es priorizar los paquetes más urgentes para asegurar que sean asignados primero.
+     * Para cada paquete, se busca el camión con menos espacio disponible que aún lo acepte
+     * (first-fit decreasing sobre capacidad), minimizando el desperdicio de espacio.
+     * Si ningún camión puede tomarlo, queda sin asignar.
+     */
+    private Solucion greedy() {
+        // Ordenar por urgencia descendente
+        List<Paquete> ordenados = new ArrayList<>(paquetes);
+        ordenados.sort((a, b) -> b.getNivelUrgencia() - a.getNivelUrgencia());
+
+        Solucion sol = new Solucion(camiones);
+
+        for (Paquete p : ordenados) {
+            Camion mejor = null;
+            int menorEspacioRestante = Integer.MAX_VALUE;
+
+            for (Camion c : camiones) {
+                candidatosGreedy++;
+                if (c.puedeAsignar(p)) {
+                    int espacioRestante = c.getCapacidadKg() - c.getPesoActual() - p.getPesoKg();
+                    if (espacioRestante < menorEspacioRestante) {
+                        menorEspacioRestante = espacioRestante;
+                        mejor = c;
+                    }
+                }
+            }
+
+            if (mejor != null) {
+                mejor.asignar(p);
+                sol.getAsignaciones().get(mejor).add(p);
+            } else {
+                sol.getNoAsignados().add(p);
+            }
+        }
+
+        return sol;
+    }
+
+    private void resetearCamiones() {
+        for (Camion c : camiones) {
+            c.getPaquetesAsignados().clear();
+        }
+        // Resetear peso actual también requiere un método en Camion, ver nota abajo
+    }
+}
