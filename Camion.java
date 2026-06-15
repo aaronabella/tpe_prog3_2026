@@ -42,6 +42,12 @@ public class Camion {
         pesoActual -= p.getPesoKg();
     }
 
+    // Resetea el estado del camión entre ejecuciones de BT y Greedy
+    public void resetear() {
+        paquetesAsignados.clear();
+        pesoActual = 0;
+    }
+
     @Override
     public String toString() {
         return "Camion{id=" + id + ", patente='" + patente + "', refrigerado=" + estaRefrigerado +

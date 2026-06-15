@@ -15,7 +15,7 @@ public class Asignador {
     public void resolver() {
         System.out.println("=== Estrategia Backtracking ===");
         estadosBack = 0;
-        Solucion mejorBT = backtracking(0, camiones);
+        Solucion mejorBT = backtracking(0, new ArrayList<>());
         mejorBT.imprimir();
         System.out.println("Cantidad de estados generados: " + estadosBack);
 
@@ -33,44 +33,47 @@ public class Asignador {
      * Estrategia Backtracking:
      * Se recorren los paquetes uno por uno (índice). Para cada paquete se prueban
      * todas las opciones: asignarlo a cada camión que lo acepte, o dejarlo sin asignar.
-     * Se guarda la solución con menor peso no asignado encontrada hasta el momento.
-     * Poda: si el peso no asignado acumulado ya supera al de la mejor solución conocida,
-     * se corta esa rama.
+     * El estado de asignación se mantiene directamente en los objetos Camion
+     * (asignar/desasignar), y al llegar a la hoja se toma una foto del estado actual
+     * como Solucion. Se conserva siempre la solución con menor peso no asignado.
+     * Poda: si ya encontramos una solución con peso 0, no puede existir mejor resultado.
      */
-    private Solucion backtracking(int indicePaquete, List<Camion> camiones) {
+    private Solucion backtracking(int indicePaquete, List<Paquete> noAsignadosActual) {
         estadosBack++;
 
         if (indicePaquete == paquetes.size()) {
-            // Construir solución con el estado actual de los camiones
+            // Hoja del árbol: construir snapshot del estado actual
             Solucion sol = new Solucion(camiones);
             for (Camion c : camiones) {
                 sol.getAsignaciones().put(c, new ArrayList<>(c.getPaquetesAsignados()));
             }
+            sol.getNoAsignados().addAll(noAsignadosActual);
             return sol;
         }
 
         Paquete actual = paquetes.get(indicePaquete);
         Solucion mejorLocal = null;
 
-        // Opción 1: intentar asignar a cada camión
+        // Opción 1: intentar asignar a cada camión válido
         for (Camion c : camiones) {
             if (c.puedeAsignar(actual)) {
                 c.asignar(actual);
-                Solucion resultado = backtracking(indicePaquete + 1, camiones);
+                Solucion resultado = backtracking(indicePaquete + 1, noAsignadosActual);
                 c.desasignar(actual);
 
                 if (mejorLocal == null || resultado.getPesoNoAsignado() < mejorLocal.getPesoNoAsignado()) {
                     mejorLocal = resultado;
                 }
 
-                // Poda: si ya encontramos peso 0 no asignado, no hay mejor solución posible
+                // Poda: peso 0 es el óptimo, no tiene sentido seguir explorando
                 if (mejorLocal.getPesoNoAsignado() == 0) return mejorLocal;
             }
         }
 
         // Opción 2: dejar el paquete sin asignar
-        Solucion sinAsignar = backtracking(indicePaquete + 1, camiones);
-        sinAsignar.getNoAsignados().add(actual);
+        noAsignadosActual.add(actual);
+        Solucion sinAsignar = backtracking(indicePaquete + 1, noAsignadosActual);
+        noAsignadosActual.remove(noAsignadosActual.size() - 1); // backtrack
 
         if (mejorLocal == null || sinAsignar.getPesoNoAsignado() < mejorLocal.getPesoNoAsignado()) {
             mejorLocal = sinAsignar;
@@ -122,8 +125,7 @@ public class Asignador {
 
     private void resetearCamiones() {
         for (Camion c : camiones) {
-            c.getPaquetesAsignados().clear();
+            c.resetear();
         }
-        // Resetear peso actual también requiere un método en Camion, ver nota abajo
     }
 }
