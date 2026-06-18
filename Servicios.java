@@ -38,6 +38,32 @@ public class Servicios {
 
     private void cargarCamiones(String path) {
         try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+            String primeraLinea = br.readLine(); // Ignorar encabezado
+            if (primeraLinea == null) return;    // Archivo vacío }
+            int total = Integer.parseInt(primeraLinea.trim());
+
+            StringBuilder sb = new StringBuilder();
+            String camion;
+            while ((camion = br.readLine()) != null) {
+                sb.append(camion);
+            }
+            String contenido = sb.toString();
+            // Si hay múltiples líneas, separar por ; y procesar cada camión
+            String[] camionesData;
+            if (contenido.contains("\n") || contenido.contains("\r")) {
+                // Múltiples líneas
+                camionesData = contenido.split("[\r\n]+");
+            } else {
+                // Una sola línea con varios camiones
+                camionesData = contenido.split(";");
+                // Pero necesitamos agrupar de a 4 elementos
+            }
+            // ... procesar cada camión
+        } catch (IOException e) {
+            System.out.println("Error al leer camiones: " + e.getMessage());
+        }
+        /*
+        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
             int total = Integer.parseInt(br.readLine().trim());
             String linea;
             while ((linea = br.readLine()) != null) {
@@ -51,6 +77,7 @@ public class Servicios {
         } catch (IOException e) {
             System.out.println("Error al leer camiones: " + e.getMessage());
         }
+         */
     }
 
     private void cargarPaquetes(String path) {
@@ -90,7 +117,11 @@ public class Servicios {
      * Búsqueda directa en HashMap por clave (código del paquete).
      */
     public Paquete servicio1(String codigoPaquete) {
-        return paquetesPorCodigo.getOrDefault(codigoPaquete, null);
+        if (codigoPaquete == null || codigoPaquete.trim().isEmpty()) {
+            return null;
+        }
+        return paquetesPorCodigo.get(codigoPaquete);
+        //return paquetesPorCodigo.getOrDefault(codigoPaquete, null);
     }
 
     /*
@@ -98,7 +129,10 @@ public class Servicios {
      * Las listas ya están armadas al momento de la carga. Solo se retorna la referencia.
      */
     public List<Paquete> servicio2(boolean contieneAlimentos) {
-        return contieneAlimentos ? paquetesConAlimentos : paquetesSinAlimentos;
+        List<Paquete> lista = contieneAlimentos ? paquetesConAlimentos : paquetesSinAlimentos;
+        // Retornar una copia para proteger la estructura interna
+        return new ArrayList<>(lista);
+        //return contieneAlimentos ? paquetesConAlimentos : paquetesSinAlimentos;
     }
 
     /*
@@ -107,6 +141,21 @@ public class Servicios {
      * subMap() en TreeMap es O(log P), luego se recorren solo los resultados del rango.
      */
     public List<Paquete> servicio3(int urgenciaMinima, int urgenciaMaxima) {
+        if (urgenciaMinima > urgenciaMaxima) {
+            return new ArrayList<>();
+        }
+
+        List<Paquete> resultado = new ArrayList<>();
+        NavigableMap<Integer, List<Paquete>> rango = paquetesPorUrgencia.subMap(
+                urgenciaMinima, true, urgenciaMaxima, true
+        );
+
+        for (List<Paquete> lista : rango.values()) {
+            resultado.addAll(lista);
+        }
+        // Retornar una copia para proteger la estructura interna
+        return resultado;
+        /*
         List<Paquete> resultado = new ArrayList<>();
         // subMap con true,true incluye ambos extremos
         NavigableMap<Integer, List<Paquete>> rango = paquetesPorUrgencia.subMap(
@@ -116,6 +165,7 @@ public class Servicios {
             resultado.addAll(lista);
         }
         return resultado;
+        */
     }
 
     public List<Camion> getCamiones() { return camiones; }

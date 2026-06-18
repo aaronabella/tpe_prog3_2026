@@ -35,6 +35,10 @@ public class Solucion {
         System.out.println("Peso no asignado: " + getPesoNoAsignado() + " kg.");
     }
 
+    public boolean esMejorQue(Solucion otra) {
+        return this.getPesoNoAsignado() < otra.getPesoNoAsignado();
+    }
+
     public List<Paquete> getNoAsignados() { return noAsignados; }
     public Map<Camion, List<Paquete>> getAsignaciones() { return asignaciones; }
 }
